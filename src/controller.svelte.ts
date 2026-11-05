@@ -348,15 +348,16 @@ export class Controller {
     }
 
     private async readHistory(): Promise<void> {
-        if (!this.api) return;
-        for (const msgtype of ["m.text", "m.notice", "m.audio", "m.image", "m.file"]) {
+        const api = this.api;
+        if (!api) return;
+        await Promise.all(["m.text", "m.notice", "m.audio", "m.image", "m.file"].map(async (msgtype) => {
             try {
-                const events = await this.api.readRoomEvents("m.room.message", 50, msgtype);
+                const events = await api.readRoomEvents("m.room.message", 50, msgtype);
                 for (const ev of events) this.onRoomEvent(ev, false);
             } catch {
                 /* host without read_events, or not approved: live events only */
             }
-        }
+        }));
     }
 
     private onRoomEvent(ev: IRoomEvent, live: boolean): void {

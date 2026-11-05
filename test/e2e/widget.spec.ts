@@ -157,6 +157,21 @@ test("handles live requests also returned by a history refresh only once", async
     ]);
 });
 
+test("reads history types concurrently for a request", async ({ page }) => {
+    const w = await open(page, { params: { engine: "echo", matrix_user_id: ME }, events: [] });
+    await expect(w.getByText("in room")).toBeVisible();
+    await w.getByRole("button", { name: "Load model" }).click();
+    await page.evaluate(() => {
+        const host = window as unknown as { __TEST_FIXTURE__: { readDelay: number }; __MAX_READ_IN_FLIGHT__: number };
+        host.__TEST_FIXTURE__.readDelay = 100;
+        host.__MAX_READ_IN_FLIGHT__ = 0;
+    });
+    await w.getByRole("textbox", { name: "Private question" }).fill("What happened?");
+    await w.getByRole("button", { name: "Ask" }).click();
+    await expect(w.getByText("done", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => (window as unknown as { __MAX_READ_IN_FLIGHT__: number }).__MAX_READ_IN_FLIGHT__)).toBeGreaterThan(1);
+});
+
 test("shows the consent problem when nothing is approved", async ({ page }) => {
     const w = await open(page, { params: { engine: "echo" }, deny: true });
     await expect(w.getByText("no permission")).toBeVisible();
